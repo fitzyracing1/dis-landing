@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DIS — lit / dark status for your sites</title>
+<meta name="description" content="DIS is a self-hostable status bot: it watches your sites and marks each one lit or dark. On-demand /check API for other bots, discovery of newly published bots. Node, zero dependencies, MIT.">
+<meta name="referrer" content="no-referrer">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="wrap hero">
+  <p class="badge"><span class="lit">●</span> lit &nbsp;·&nbsp; <span class="dark">○</span> dark</p>
+  <h1>DIS</h1>
+  <p class="lead">A self-hostable status bot. It watches your sites and marks each one <b>lit</b> (up and healthy) or <b>dark</b> (down, erroring or too slow).</p>
+  <p class="cta">
+    <a class="button" href="https://github.com/fitzyracing1/DIS">View on GitHub</a>
+    <a class="button ghost" href="#quick-start">Quick start</a>
+  </p>
+  <p class="small">Node 18+ · zero dependencies · MIT · no tracking, ever</p>
+</header>
+
+<main>
+<section class="wrap">
+  <img class="shot" src="status-page.png" width="1000" height="560" alt="The DIS status page: three targets, all lit, with uptime and last check time">
+</section>
+
+<section class="wrap grid">
+  <article>
+    <h2><span class="lit">●</span> Lit / dark status</h2>
+    <p>HTTP(S), TCP and DNS checks from one <code>status.config.json</code>. Each check can set an expected status code, a maximum latency and a keyword the page must contain. The default interval is 60 s.</p>
+    <p>DIS alerts only when a light changes (two failures in a row before it goes dark). Alerts can go to Discord, Slack or any JSON webhook, and lights can be mirrored to <a href="https://github.com/fitzyracing1/light-report">light-report</a>.</p>
+    <p>A tiny status page and <code>/status.json</code> show the state, uptime and last check time. State survives restarts.</p>
+  </article>
+  <article>
+    <h2><span class="lit">●</span> On-demand <code>/check</code> API</h2>
+    <p>Other bots can ask whether a URL is lit right now:</p>
+<pre><code>POST /check
+{"url":"https://example.com","expect":200,"maxMs":3000}
+→ {"state":"lit","status":200,"ms":231,"detail":"HTTP 200 in 231ms"}</code></pre>
+    <p>It's off by default. It needs an API key or an explicit public switch, and it has per-IP rate limits and SSRF protection: private, loopback and metadata addresses are blocked after DNS lookup and on every redirect. There's also a CLI: <code>dis check &lt;url&gt;</code>.</p>
+  </article>
+  <article>
+    <h2><span class="lit">●</span> Discovery of new bots</h2>
+    <p>DIS can optionally find newly published bots through official APIs: GitHub topics, npm, PyPI, the <a href="https://registry.modelcontextprotocol.io">MCP registry</a>, and top.gg with a token. Bot owners can also self-register by proving ownership with <code>/.well-known/dis.txt</code>.</p>
+    <p>It only checks the one URL each bot published itself, follows robots.txt, waits at least 5 minutes between checks, caps the number of targets and sends an honest User-Agent. No scanning, no crawling.</p>
+  </article>
+</section>
+
+<section class="wrap" id="quick-start">
+  <h2>Quick start</h2>
+  <h3>1 · Try it with npx (no install)</h3>
+<pre><code>echo '{"targets":[{"name":"site","url":"https://example.com"}]}' &gt; status.config.json
+npx -y github:fitzyracing1/DIS once        # exit 0 = all lit, 1 = something dark
+npx -y github:fitzyracing1/DIS serve       # status page on http://localhost:8080
+npx -y github:fitzyracing1/DIS check https://example.com</code></pre>
+
+  <h3>2 · Or clone it</h3>
+<pre><code>git clone https://github.com/fitzyracing1/DIS.git &amp;&amp; cd DIS
+node bin/dis.mjs once
+node bin/dis.mjs serve
+npm test</code></pre>
+
+  <h3>3 · Configure</h3>
+<pre><code>{
+  "title": "My status",
+  "defaults": { "intervalSeconds": 60, "maxLatencyMs": 5000, "failThreshold": 2 },
+  "targets": [
+    { "name": "site", "type": "http", "url": "https://example.com", "expectStatus": 200, "keyword": "Example" },
+    { "name": "db",   "type": "tcp",  "host": "db.example.com", "port": 5432 },
+    { "name": "dns",  "type": "dns",  "host": "example.com" }
+  ],
+  "alerts": [{ "type": "discord", "url": "${DISCORD_WEBHOOK_URL}" }]
+}</code></pre>
+  <p class="small"><code>${VAR}</code> is filled in from the environment. An alert whose URL comes out empty is switched off.</p>
+
+  <h3>4 · Deploy</h3>
+  <div class="grid three">
+    <div>
+      <h4>Docker</h4>
+<pre><code>docker build -t dis .
+docker run -d -p 8080:8080 \
+  -v dis-data:/data dis</code></pre>
+    </div>
+    <div>
+      <h4>Railway</h4>
+      <p>Create a project from the repo. It uses the included <code>Dockerfile</code> and <code>railway.json</code>, reads <code>PORT</code>, and health-checks <code>/healthz</code>. Add a volume at <code>/data</code>.</p>
+    </div>
+    <div>
+      <h4>GitHub Actions cron</h4>
+      <p>No server needed. The included <code>status.yml</code> runs <code>dis once</code> every 10 minutes, and the job goes red when anything is dark. State is carried between runs.</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>Discovered bots on the status page</h2>
+  <img class="shot" src="status-page-discovery.png" width="1000" height="900" loading="lazy" alt="The DIS status page with a Discovered bots section listing MCP servers with lit and no-endpoint states">
+</section>
+</main>
+
+<footer class="wrap">
+  <p><a href="https://github.com/fitzyracing1/DIS">github.com/fitzyracing1/DIS</a> · MIT License © 2026 Joshua Almeida · part of the lit/dark family with <a href="https://github.com/fitzyracing1/light-report">light-report</a></p>
+  <p class="small">This page uses no cookies, analytics, trackers, external fonts or scripts.</p>
+</footer>
+</body>
+</html>
